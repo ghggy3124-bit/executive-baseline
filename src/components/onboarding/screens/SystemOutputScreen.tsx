@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ArrowLeft, Check, Clock, User } from "lucide-react";
-import { type ICPResult, ICP_DISPLAY_NAMES, ICP_DESCRIPTIONS } from "@/lib/icpClassifier";
+import { type ICPResult, ICP_DISPLAY_NAMES, ICP_DESCRIPTIONS, type ICPKey } from "@/lib/icpClassifier";
 
 interface SystemOutputScreenProps {
   strictness: string;
@@ -25,6 +25,49 @@ interface ConditionalItem {
   status: "eligible" | "pending";
   description: string;
 }
+
+const ICP_SHORT_NAMES: Record<ICPKey, string> = {
+  ICP1_EXEC: "Executive",
+  ICP2_ATHLETE: "Athlete",
+  ICP3_METABOLIC: "Metabolic",
+  ICP4_MIDLIFE: "Midlife",
+  ICP5_KNOWLEDGE: "Knowledge",
+};
+
+const ScoreBar = ({ 
+  label, 
+  score, 
+  maxScore, 
+  isWinner 
+}: { 
+  label: string; 
+  score: number; 
+  maxScore: number; 
+  isWinner: boolean;
+}) => {
+  const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+  
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-xs">
+        <span className={isWinner ? "font-semibold text-foreground" : "text-muted-foreground"}>
+          {label}
+        </span>
+        <span className={isWinner ? "font-semibold text-foreground" : "text-muted-foreground"}>
+          {score}
+        </span>
+      </div>
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${percentage}%` }}
+          transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+          className={`h-full rounded-full ${isWinner ? "bg-primary" : "bg-muted-foreground/40"}`}
+        />
+      </div>
+    </div>
+  );
+};
 
 export const SystemOutputScreen = ({ strictness, icpResult, onNext, onBack }: SystemOutputScreenProps) => {
   // System recommendations based on strictness
@@ -68,6 +111,13 @@ export const SystemOutputScreen = ({ strictness, icpResult, onNext, onBack }: Sy
     "Nootropic cocktails",
   ];
 
+  // Calculate max score for bar chart scaling
+  const maxScore = icpResult 
+    ? Math.max(...Object.values(icpResult.scores), 1) 
+    : 1;
+
+  const icpOrder: ICPKey[] = ["ICP1_EXEC", "ICP2_ATHLETE", "ICP3_METABOLIC", "ICP4_MIDLIFE", "ICP5_KNOWLEDGE"];
+
   return (
     <div className="space-y-8">
       {/* ICP Classification Badge */}
@@ -77,7 +127,7 @@ export const SystemOutputScreen = ({ strictness, icpResult, onNext, onBack }: Sy
           animate={{ opacity: 1, y: 0 }}
           className="p-4 bg-accent/30 rounded-xl border border-accent"
         >
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center shrink-0">
               <User className="w-5 h-5 text-accent-foreground" />
             </div>
@@ -100,6 +150,22 @@ export const SystemOutputScreen = ({ strictness, icpResult, onNext, onBack }: Sy
                 {ICP_DESCRIPTIONS[icpResult.primary_icp]}
               </p>
             </div>
+          </div>
+          
+          {/* Score breakdown */}
+          <div className="space-y-2 pt-3 border-t border-accent/50">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+              Profile Score Breakdown
+            </p>
+            {icpOrder.map((key) => (
+              <ScoreBar
+                key={key}
+                label={ICP_SHORT_NAMES[key]}
+                score={icpResult.scores[key]}
+                maxScore={maxScore}
+                isWinner={key === icpResult.primary_icp}
+              />
+            ))}
           </div>
         </motion.div>
       )}

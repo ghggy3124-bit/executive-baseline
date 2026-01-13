@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { OnboardingLayout } from "./OnboardingLayout";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
 import { SingleChoiceScreen } from "./screens/SingleChoiceScreen";
@@ -7,10 +7,23 @@ import { WearableScreen } from "./screens/WearableScreen";
 import { SystemOutputScreen } from "./screens/SystemOutputScreen";
 import { SystemRulesScreen } from "./screens/SystemRulesScreen";
 import { CheckoutScreen } from "./screens/CheckoutScreen";
+import { AgeBandScreen } from "./screens/AgeBandScreen";
+import {
+  classifyICP,
+  mapGoal,
+  mapTrainingFrequency,
+  mapAgeBand,
+  mapSleepBaseline,
+  mapCaffeineUse,
+  mapConstraints,
+  deriveMetabolicContext,
+  type ICPResult,
+} from "@/lib/icpClassifier";
 
 interface OnboardingState {
   primaryGoal: string | null;
   constraints: string[];
+  ageBand: string | null;
   trainingFrequency: string | null;
   sleepBaseline: string | null;
   caffeineUse: string | null;
@@ -22,13 +35,14 @@ interface OnboardingState {
   reviewCadence: string | null;
 }
 
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 13;
 
 export const OnboardingFlow = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [state, setState] = useState<OnboardingState>({
     primaryGoal: null,
     constraints: [],
+    ageBand: null,
     trainingFrequency: null,
     sleepBaseline: null,
     caffeineUse: null,
@@ -39,6 +53,28 @@ export const OnboardingFlow = () => {
     wearableDevice: null,
     reviewCadence: null,
   });
+
+  // Compute ICP classification when all required fields are present
+  const icpResult: ICPResult | null = useMemo(() => {
+    if (
+      state.primaryGoal &&
+      state.trainingFrequency &&
+      state.ageBand &&
+      state.sleepBaseline &&
+      state.caffeineUse
+    ) {
+      return classifyICP({
+        goal: mapGoal(state.primaryGoal),
+        training_frequency: mapTrainingFrequency(state.trainingFrequency),
+        age_band: mapAgeBand(state.ageBand),
+        sleep_baseline: mapSleepBaseline(state.sleepBaseline),
+        caffeine_use: mapCaffeineUse(state.caffeineUse),
+        metabolic_context: deriveMetabolicContext(state.sensitivities),
+        constraints: mapConstraints(state.constraints),
+      });
+    }
+    return null;
+  }, [state]);
 
   const goNext = () => setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS + 1));
   const goBack = () => setCurrentStep((s) => Math.max(s - 1, 0));
@@ -68,6 +104,7 @@ export const OnboardingFlow = () => {
   const handleCheckout = () => {
     // In a real app, this would navigate to checkout
     console.log("Checkout with state:", state);
+    console.log("ICP Classification:", icpResult);
     alert("Onboarding complete! In production, this would proceed to checkout.");
   };
 
@@ -115,6 +152,16 @@ export const OnboardingFlow = () => {
 
       case 3:
         return (
+          <AgeBandScreen
+            selected={state.ageBand}
+            onSelect={(v) => updateState("ageBand", v)}
+            onNext={goNext}
+            onBack={goBack}
+          />
+        );
+
+      case 4:
+        return (
           <SingleChoiceScreen
             question="How often do you train?"
             options={[
@@ -130,7 +177,7 @@ export const OnboardingFlow = () => {
           />
         );
 
-      case 4:
+      case 5:
         return (
           <SingleChoiceScreen
             question="On most nights, your sleep is…"
@@ -148,7 +195,7 @@ export const OnboardingFlow = () => {
           />
         );
 
-      case 5:
+      case 6:
         return (
           <SingleChoiceScreen
             question="Which best describes your caffeine use?"
@@ -166,7 +213,7 @@ export const OnboardingFlow = () => {
           />
         );
 
-      case 6:
+      case 7:
         return (
           <SingleChoiceScreen
             question="Protein is handled via food, not supplements. Are you getting enough daily?"
@@ -183,7 +230,7 @@ export const OnboardingFlow = () => {
           />
         );
 
-      case 7:
+      case 8:
         return (
           <MultiChoiceScreen
             question="Anything we should be aware of?"
@@ -203,7 +250,7 @@ export const OnboardingFlow = () => {
           />
         );
 
-      case 8:
+      case 9:
         return (
           <SingleChoiceScreen
             question="How strict should the system be?"
@@ -219,7 +266,7 @@ export const OnboardingFlow = () => {
           />
         );
 
-      case 9:
+      case 10:
         return (
           <WearableScreen
             usesWearable={state.usesWearable}
@@ -234,7 +281,7 @@ export const OnboardingFlow = () => {
           />
         );
 
-      case 10:
+      case 11:
         return (
           <SingleChoiceScreen
             question="How often should we review your system?"
@@ -249,16 +296,17 @@ export const OnboardingFlow = () => {
           />
         );
 
-      case 11:
+      case 12:
         return (
           <SystemOutputScreen
             strictness={state.systemStrictness || "Standard (recommended)"}
+            icpResult={icpResult}
             onNext={goNext}
             onBack={goBack}
           />
         );
 
-      case 12:
+      case 13:
         return (
           <SystemRulesScreen
             onConfirm={goNext}
@@ -266,7 +314,7 @@ export const OnboardingFlow = () => {
           />
         );
 
-      case 13:
+      case 14:
         return (
           <CheckoutScreen
             reviewCadence={state.reviewCadence || "Every 4 weeks"}

@@ -1,9 +1,11 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ArrowLeft, Check, Clock } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Clock, User } from "lucide-react";
+import { type ICPResult, ICP_DISPLAY_NAMES, ICP_DESCRIPTIONS } from "@/lib/icpClassifier";
 
 interface SystemOutputScreenProps {
   strictness: string;
+  icpResult: ICPResult | null;
   onNext: () => void;
   onBack: () => void;
 }
@@ -24,7 +26,7 @@ interface ConditionalItem {
   description: string;
 }
 
-export const SystemOutputScreen = ({ strictness, onNext, onBack }: SystemOutputScreenProps) => {
+export const SystemOutputScreen = ({ strictness, icpResult, onNext, onBack }: SystemOutputScreenProps) => {
   // System recommendations based on strictness
   const sections: SystemSection[] = [
     {
@@ -68,6 +70,40 @@ export const SystemOutputScreen = ({ strictness, onNext, onBack }: SystemOutputS
 
   return (
     <div className="space-y-8">
+      {/* ICP Classification Badge */}
+      {icpResult && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 bg-accent/30 rounded-xl border border-accent"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center shrink-0">
+              <User className="w-5 h-5 text-accent-foreground" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-semibold text-foreground">
+                  {ICP_DISPLAY_NAMES[icpResult.primary_icp]}
+                </span>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  icpResult.confidence === "high" 
+                    ? "bg-green-500/20 text-green-700 dark:text-green-400" 
+                    : icpResult.confidence === "medium"
+                    ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400"
+                    : "bg-muted text-muted-foreground"
+                }`}>
+                  {icpResult.confidence} confidence
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {ICP_DESCRIPTIONS[icpResult.primary_icp]}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Title */}
       <div className="space-y-2">
         <span className="text-xs font-medium tracking-widest uppercase text-muted-foreground">
